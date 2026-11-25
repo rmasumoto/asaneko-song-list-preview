@@ -17,11 +17,16 @@
 body {margin:0; min-height:100vh; isolation:isolate}
 .backdrop {position:fixed; z-index:-1; inset:0; background:var(--image) center center / cover no-repeat}
 .wrap {width:min(calc(100% - 1.25rem), 56rem); margin-inline:auto}
-.hero {text-align:center; color:var(--header); padding:clamp(1.15rem, 4vw, 2.25rem) 0 .9rem; text-shadow:0 2px 9px #143f7dbf}
+.hero {position:relative; text-align:center; color:var(--header); padding:clamp(1.15rem, 4vw, 2.25rem) 0 .9rem; text-shadow:0 2px 9px #143f7dbf}
+.hero-top {display:grid; place-items:center; min-block-size:44px}
+.artist-links {position:absolute; inset-block-start:.4rem; inset-inline-end:0; display:flex; gap:.3rem}
+.artist-links a {display:grid; place-items:center; inline-size:44px; block-size:44px; border:1px solid #fffe; border-radius:50%; background:#ffffffde; box-shadow:var(--glass-shadow)}
+.artist-links a:hover,.artist-links a:focus-visible {background:#fff}
+.artist-links svg {inline-size:26px; block-size:26px}
 .brand, h1 {font-family:"Hiragino Mincho ProN","Yu Mincho",YuMincho,serif; margin:0}
 .brand {font-size:clamp(1.15rem, 3.1vw, 2rem); letter-spacing:.13em}
 .brand span[aria-hidden] {margin-inline:.3em; text-shadow:0 0 16px white}
-.hero-title {position:relative; display:inline-flex; align-items:end; gap:.2rem; padding:.15rem .7rem .5rem; border-bottom:1px solid #fffe; border-radius:0 0 42% 35%}
+.hero-title {position:relative; display:inline-flex; align-items:end; max-inline-size:100%; gap:.2rem; padding:.15rem .7rem .5rem; border-bottom:1px solid #fffe; border-radius:0 0 42% 35%}
 h1 {font-size:clamp(1.8rem, 6.1vw, 4.1rem); font-weight:600; line-height:1.18; letter-spacing:.04em}
 .cat {width:clamp(1.9rem, 6vw, 4rem); filter:drop-shadow(0 0 8px #fff9); margin-right:.1em}
 .intro {font-size:clamp(.88rem, 2.2vw, 1.4rem); margin:.65rem 0 0}
@@ -41,31 +46,43 @@ button:disabled {opacity:.65; cursor:default}
 .gradient {color:#fff; background:linear-gradient(var(--button-start),var(--button-end)); text-shadow:0 1px 3px #163862a0; font-weight:750}
 .search button {border-radius:0; width:clamp(3rem, 13%, 6.4rem); border:0; border-left:1px solid #fffc; align-self:stretch}
 .filter-menu {display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.45rem}
+.filter-menu[data-three-filters] {grid-template-columns:repeat(3,minmax(0,1fr))}
 .filter-menu button {min-width:0; display:flex; gap:.45rem; align-items:center; color:var(--filter-text); backdrop-filter:blur(10px); text-align:left}
 .filter-menu button > .icon:first-child {color:var(--icon); font-size:1.1rem}
 .filter-menu button > .icon:last-child {margin-left:auto; width:1em; height:1em}
 .filter-menu button[aria-expanded="true"] > .icon:last-child {transform:rotate(180deg)}
 .filter-menu button span {display:block; min-width:0; font-weight:740; line-height:1.2}
-.filter-menu small {display:block; font-size:.76rem; font-weight:550; margin-top:.14rem}
+.filter-menu small {display:block; font-size:.76rem; font-weight:550; margin-top:.14rem; overflow-wrap:anywhere}
+.filter-menu[data-three-filters] button {--filter-side:1.2rem; display:grid; grid-template-columns:var(--filter-side) minmax(0,1fr) var(--filter-side); gap:.1rem; padding:.4rem .45rem; text-align:center}
+.filter-menu[data-three-filters] button > .icon:first-child {width:var(--filter-side); height:var(--filter-side); justify-self:start}
+.filter-menu[data-three-filters] button > .icon:last-child {width:.6rem; height:.6rem; margin:0; justify-self:end}
+.filter-menu[data-three-filters] button > span {max-inline-size:100%; font-size:.82rem}
+.filter-menu[data-three-filters] :is(button > span, small) {overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.filter-menu[data-three-filters] button[aria-expanded="true"] {border-color:var(--main)}
+@media (max-width:23rem) {
+  .filter-menu[data-three-filters] button {--filter-side:1.08rem; padding-inline:.3rem}
+  .filter-menu[data-three-filters] button > span {font-size:.7rem}
+}
 #filter-options {position:absolute; top:100%; width:100%}
 .filter-options {padding:.65rem; display:flex; flex-wrap:wrap; gap:.4rem; max-height:35vh; overflow:auto; border-radius:1rem; color:var(--filter-text); background:var(--filter-bg); box-shadow:var(--glass-shadow)}
+.filter-options button {max-inline-size:100%; white-space:normal; overflow-wrap:anywhere}
 .filter-options button[aria-pressed="true"] {border-color:var(--main); background:color-mix(in srgb,var(--accent) 27%,var(--filter-bg)); font-weight:750}
-.results-bar {display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:.4rem; margin:.65rem 0 .55rem}
+.results-bar {display:grid; grid-template-columns:minmax(0,1fr); align-items:center; gap:.4rem; margin:.65rem 0 .55rem}
 .result-count {font-weight:700}
 #count {font-size:1.55rem; font-variant-numeric:tabular-nums; color:var(--title)}
-.results-actions {display:flex; align-items:center; flex-wrap:wrap; gap:.35rem}
+.results-actions {min-inline-size:0; max-inline-size:100%; display:flex; align-items:center; flex-wrap:wrap; gap:.35rem}
 .results-actions label {font-size:.8rem}
-.results-actions button, .results-actions select {font-size:.85rem; color:var(--filter-text)}
+.results-actions button, .results-actions select {min-inline-size:0; max-inline-size:100%; font-size:.85rem; color:var(--filter-text)}
 .results-actions select {font-size:1rem}
 .results-actions button .icon {margin-right:.25rem; color:var(--icon)}
-.songs {display:grid; gap:.45rem; list-style:none; margin:0; padding:0}
+.songs {display:grid; grid-template-columns:minmax(0,1fr); gap:.45rem; list-style:none; margin:0; padding:0}
 .song {display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:.35rem .6rem; align-items:center; padding:.58rem .65rem; border:1px solid #fffd; border-radius:1.15rem; background:var(--card); background:color-mix(in srgb,var(--card) var(--opacity),transparent); box-shadow:var(--glass-shadow); overflow-wrap:anywhere}
 .note {grid-column:1; grid-row:1; display:grid; place-items:center; width:2.4rem; aspect-ratio:1; color:var(--icon); background:color-mix(in srgb,var(--accent) 23%,transparent); border-radius:.7rem; font-size:1.2rem}
 .song-heading {grid-column:2; grid-row:1}
 .song h2 {margin:0; font-size:1.04rem; line-height:1.24; color:var(--title)}
 .artist {margin:.12rem 0 0; color:var(--artist); font-size:.88rem}
-.labels {grid-column:2 / 4; display:flex; align-items:center; flex-wrap:wrap; gap:.25rem}
-.label {font-size:.78rem; background:var(--tag-bg); color:var(--tag-text); padding:.13rem .48rem; border-radius:99rem; font-weight:680}
+.labels {grid-column:2 / 4; min-inline-size:0; display:flex; align-items:center; flex-wrap:wrap; gap:.25rem}
+.label {max-inline-size:100%; font-size:.78rem; background:var(--tag-bg); color:var(--tag-text); padding:.13rem .48rem; border-radius:99rem; font-weight:680}
 .label .icon {margin-right:.23em; width:1em; height:1em}
 .genre {background:var(--genre-bg); color:var(--genre-text)}
 .mood {background:var(--mood-bg); color:var(--mood-text)}
@@ -73,19 +90,24 @@ button:disabled {opacity:.65; cursor:default}
 .medium {background:var(--medium-bg); color:var(--medium-text)}
 .large {background:var(--large-bg); color:var(--large-text)}
 .copy {grid-column:3;grid-row:1; display:grid; place-items:center; min-width:44px; padding:0; color:var(--icon); font-size:1.05rem}
-.empty,.rules,dialog {background:var(--card); color:var(--text); border-radius:1rem; padding:1rem}
-.rules {margin:.8rem 0}
-.rules summary {cursor:pointer}
+.clipboard-field {position:fixed; inset:0 auto auto 0; width:1px; height:1px; padding:0; border:0; opacity:0; pointer-events:none}
+.empty,dialog {background:var(--card); color:var(--text); border-radius:1rem; padding:1rem}
+.catalog-note {margin:.8rem 0; font-size:.8rem; text-align:center}
 .random-dock {position:fixed; z-index:3; bottom:calc(.85rem + env(safe-area-inset-bottom)); inset-inline:0; display:grid; place-items:center; pointer-events:none}
 .random-dock button {pointer-events:auto; width:min(88%, 45rem); min-height:3.2rem; border:1.5px solid #fff; box-shadow:var(--glass-shadow),0 0 16px var(--accent); display:flex; justify-content:center; align-items:center; gap:.6rem; font-size:clamp(1rem,2.7vw,1.55rem)}
 dialog {width:min(calc(100% - 1.25rem), 48rem); border:1px solid #fff; box-shadow:var(--glass-shadow)}
 dialog::backdrop {background:#13274e80}
 dialog form {float:right}
 dialog > p {font-weight:750}
-.feedback {position:fixed; z-index:4; inset:auto 1rem 5rem; width:fit-content; margin:auto; border-radius:2rem; padding:.5rem 1rem; color:#fff; background:#14245d}
+.feedback {position:fixed; z-index:4; inset:auto 1rem 5rem; width:fit-content; max-inline-size:calc(100% - 2rem); margin:auto; border-radius:2rem; padding:.5rem 1rem; color:#fff; background:#14245d; overflow-wrap:anywhere}
 .visually-hidden {position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%)}
 [hidden] {display:none !important}
+@media (max-width:24rem) {
+  .brand {font-size:1rem; letter-spacing:.07em}
+  .brand span[aria-hidden] {font-size:.85em; margin-inline:.12em}
+}
 @media (min-width:36rem) {
+  .results-bar {grid-template-columns:minmax(0,1fr) auto}
   .filter-menu {grid-template-columns:repeat(4,minmax(0,1fr))}
   .search {margin-bottom:.85rem; min-height:3.4rem}
   .filter-menu button {min-height:3.25rem}

@@ -9,13 +9,30 @@ function normalize(value) {
     .replace(/[ァ-ヶ]/g, (kana) => String.fromCharCode(kana.charCodeAt(0) - 0x60)).trim();
 }
 
+function compareName(left, right) {
+  const group = (name) => {
+    if (/^[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u.test(name)) return 0;
+    if (/^\p{Script=Latin}/u.test(name)) return 1;
+    return 2;
+  };
+  const a = normalize(left);
+  const b = normalize(right);
+  return group(a) - group(b) || order.compare(a, b);
+}
+
+function compareTitle(a, b) {
+  return compareName(a.titleKana || a.title, b.titleKana || b.title);
+}
+
 function findSongs(songs, { query, filters, sort }) {
   const words = normalize(query).split(/\s+/).filter(Boolean);
   const result = songs.filter((song) => words.every((word) => song.searchText.includes(word))
     && Object.entries(filters).every(([key, selected]) =>
       !selected.size || [song[key]].flat().some((value) => selected.has(value))));
-  if (sort === "title") result.sort((a, b) => order.compare(a.titleKana || a.title, b.titleKana || b.title));
-  if (sort === "gift") result.sort((a, b) => (a.coins ?? Infinity) - (b.coins ?? Infinity) || order.compare(a.titleKana || a.title, b.titleKana || b.title));
+  if (sort === "title") result.sort(compareTitle);
+  if (sort === "artist") result.sort((a, b) =>
+    compareName(a.artistKana || a.artist, b.artistKana || b.artist) || compareTitle(a, b));
+  if (sort === "gift") result.sort((a, b) => (a.coins ?? Infinity) - (b.coins ?? Infinity) || compareTitle(a, b));
   return result;
 }
 
@@ -41,13 +58,45 @@ function giftText(coins) {
   return coins.toLocaleString("ja-JP") + "コイン";
 }
 
-function initialize(data, showGifts = true) {
+function copyWithSelection(text, button) {
+  const field = element("textarea", "clipboard-field");
+  field.value = text;
+  field.readOnly = true;
+  field.tabIndex = -1;
+  (button.closest("dialog") || document.body).append(field);
+  try {
+    field.focus({ preventScroll: true });
+    field.select();
+    field.setSelectionRange(0, text.length);
+    return document.execCommand("copy");
+  } catch {
+    return false;
+  } finally {
+    field.remove();
+    button.focus({ preventScroll: true });
+  }
+}
+
+async function copyText(text, button) {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Try selection-based copying when the Clipboard API is unavailable or denied.
+    }
+  }
+  return copyWithSelection(text, button);
+}
+
+function initialize(data, showGifts = true, randomListActive = false) {
   const songs = data.map((song) => ({
     ...song,
     giftId: song.giftId ?? String(song.coins),
     labels: song.signature ? ["超オハコ", ...song.tags] : song.tags,
     searchText: normalize([song.title, song.artist, song.titleKana, song.artistKana].filter(Boolean).join(" ")),
   }));
+  const randomListSongs = randomListActive ? songs.filter((song) => song.randomEligible) : null;
   const query = ui("query");
   const sort = ui("sort");
   const list = ui("songs");
@@ -56,13 +105,20 @@ function initialize(data, showGifts = true) {
   const dialog = ui("random-result");
   const feedback = ui("feedback");
   const menu = ui("filter-menu");
+  if (!showGifts) menu.setAttribute("data-three-filters", "");
   const options = ui("filter-options");
-  const giftNames = new Map(songs.map((song) => [song.giftId, song.coins === null ? song.giftName : giftText(song.coins) + (song.giftName && !song.giftName.includes("（仮）") ? " " + song.giftName : "")]));
+  const giftNames = new Map(songs.map((song) => [song.giftId, song.coins === null ? song.giftName : giftText(song.coins)]));
+  const giftNameCounts = new Map();
+  for (const name of giftNames.values()) giftNameCounts.set(name, (giftNameCounts.get(name) || 0) + 1);
+  const giftFilterName = (id) => {
+    const name = giftNames.get(id);
+    return giftNameCounts.get(name) > 1 ? name + "（ID " + id.replace(/^id:/, "") + "）" : name;
+  };
   const definitions = [
-    ...(showGifts ? [["giftId", "ギフト", "gift", (id) => giftNames.get(id)]] : []),
     ["genres", "ジャンル", "note"],
     ["moods", "雰囲気", "sparkles"],
     ["tags", "タグ", "tag"],
+    ...(showGifts ? [["giftId", "ギフト", "gift", giftFilterName]] : []),
   ];
   const filters = Object.fromEntries(definitions.map(([key]) => [key, new Set()]));
   filters.signature = new Set();
@@ -72,14 +128,17 @@ function initialize(data, showGifts = true) {
   let active = null;
   let notification;
 
-  async function copyTitle(title) {
-    try {
-      await navigator.clipboard.writeText(title);
-      clearTimeout(notification);
-      feedback.hidden = false;
-      feedback.textContent = "曲名をコピーしました";
-      notification = setTimeout(() => { feedback.hidden = true; }, 2500);
-    } catch {
+  function showFeedback(message) {
+    clearTimeout(notification);
+    feedback.hidden = false;
+    feedback.textContent = message;
+    notification = setTimeout(() => { feedback.hidden = true; }, 2500);
+  }
+
+  async function copyTitle(title, button) {
+    if (await copyText(title, button)) {
+      showFeedback("曲名をコピーしました");
+    } else {
       window.prompt("曲名を選択してコピーしてください。", title);
     }
   }
@@ -92,18 +151,21 @@ function initialize(data, showGifts = true) {
     heading.append(element("h2", "", song.title));
     if (song.artist) heading.append(element("p", "artist", song.artist));
     const labels = element("div", "labels");
-    const tier = song.coins === null ? "" : song.coins <= 500 ? "small" : song.coins <= 2599 ? "medium" : "large";
-    const gift = element("span", "label " + tier);
-    gift.append(icon("gift"), giftNames.get(song.giftId));
-    if (showGifts) labels.append(gift);
-    for (const [values, group] of [[song.genres, "genre"], [song.moods, "mood"], [song.labels, ""]]) {
+    for (const genre of song.genres) labels.append(element("span", "label genre", genre));
+    if (showGifts) {
+      const tier = song.coins === null ? "" : song.coins <= 500 ? "small" : song.coins <= 2599 ? "medium" : "large";
+      const gift = element("span", "label " + tier);
+      gift.append(icon("gift"), giftNames.get(song.giftId));
+      labels.append(gift);
+    }
+    for (const [values, group] of [[song.moods, "mood"], [song.labels, ""]]) {
       for (const value of values) labels.append(element("span", "label " + group, value));
     }
     const copy = element("button", "copy");
     copy.type = "button";
     copy.setAttribute("aria-label", song.title + "の曲名をコピー");
     copy.append(icon("copy"));
-    copy.addEventListener("click", () => copyTitle(song.title));
+    copy.addEventListener("click", () => copyTitle(song.title, copy));
     row.append(note, heading, labels, copy);
     return row;
   }
@@ -122,7 +184,7 @@ function initialize(data, showGifts = true) {
     matched = findSongs(songs, { query: query.value, filters, sort: sort.value });
     ui("count").textContent = matched.length.toLocaleString("ja-JP");
     ui("empty").hidden = matched.length > 0;
-    random.disabled = matched.length === 0;
+    random.disabled = randomListSongs === null && matched.length === 0;
     observer?.unobserve(sentinel);
     visible = 0;
     list.replaceChildren();
@@ -196,7 +258,7 @@ function initialize(data, showGifts = true) {
   });
   ui("reset").addEventListener("click", () => {
     query.value = "";
-    sort.value = "title";
+    sort.value = "artist";
     for (const selected of Object.values(filters)) selected.clear();
     for (const summary of summaries.values()) summary.textContent = "指定なし";
     closeOptions();
@@ -211,8 +273,12 @@ function initialize(data, showGifts = true) {
   query.addEventListener("input", refresh);
   sort.addEventListener("change", refresh);
   random.addEventListener("click", () => {
-    if (!matched.length) return;
-    const song = matched[Math.floor(Math.random() * matched.length)];
+    const candidates = randomListSongs ?? matched;
+    if (!candidates.length) {
+      if (randomListActive) showFeedback("指定のランダムリストに公開曲がありません。");
+      return;
+    }
+    const song = candidates[Math.floor(Math.random() * candidates.length)];
     ui("selected-song").replaceChildren(card(song, "article"));
     dialog.showModal();
   });
